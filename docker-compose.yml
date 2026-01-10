@@ -1,0 +1,53 @@
+version: '3.8'
+
+# Configuración de PRODUCCIÓN
+# Para desarrollo local, usa: docker-compose -f docker-compose.dev.yml up
+
+services:
+  app:
+    build: .
+    container_name: gymbot-app
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - internal
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.gymbot.rule=Host(`gymbot.berguecio.cl`)"
+      - "traefik.http.routers.gymbot.entrypoints=websecure"
+      - "traefik.http.routers.gymbot.tls=true"
+      - "traefik.http.services.gymbot.loadbalancer.server.port=8000"
+      - "traefik.docker.network=proxy"
+      - "monitoring.url=https://gymbot.berguecio.cl"
+
+  db:
+    image: postgres:15-alpine
+    container_name: gymbot-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: gymbot
+      POSTGRES_USER: gymbot
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gymbot"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+networks:
+  internal:
+    driver: bridge
+  proxy:
+    external: true
+
+volumes:
+  postgres_data:

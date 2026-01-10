@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: gymbot-app-dev
+    restart: unless-stopped
+    env_file:
+      - .env  # Mismo archivo .env, solo cambia TELEGRAM_WEBHOOK_URL
+    ports:
+      - "8000:8000"  # Exponer puerto para acceso local
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - internal
+    volumes:
+      - ./app:/app/app  # Hot reload - montar código fuente
+
+  db:
+    image: postgres:15-alpine
+    container_name: gymbot-db-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: gymbot
+      POSTGRES_USER: gymbot
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gymbot_dev}
+    ports:
+      - "5432:5432"  # Exponer PostgreSQL para inspección
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gymbot"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  postgres_data_dev:
