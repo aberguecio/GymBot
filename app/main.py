@@ -5,7 +5,6 @@ from contextlib import asynccontextmanager
 import logging
 
 from app.config import get_settings
-from app.api import users, exercises
 from app.bot import handlers
 
 # Setup logging
@@ -92,26 +91,12 @@ async def health_check():
     }
 
 
-# Include API routers
-app.include_router(
-    users.router,
-    prefix=f"{settings.API_PREFIX}/users",
-    tags=["users"]
-)
-
-app.include_router(
-    exercises.router,
-    prefix=f"{settings.API_PREFIX}/exercises",
-    tags=["exercises"]
-)
-
-
 # Root endpoint
 @app.get("/")
 async def root():
     """Root endpoint"""
     return {
-        "message": "Welcome to GymBot API",
-        "docs": "/docs",
+        "message": "Welcome to GymBot",
+        "bot": "@TheGymCounterBot",
         "health": "/health"
     }

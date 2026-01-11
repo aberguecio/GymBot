@@ -23,7 +23,7 @@ services:
       - "traefik.http.routers.gymbot.tls=true"
       - "traefik.http.services.gymbot.loadbalancer.server.port=8000"
       - "traefik.docker.network=proxy"
-      - "monitoring.url=https://gymbot.berguecio.cl"
+      - "monitoring.url=https://gymbot.berguecio.cl/health"
 
   db:
     image: postgres:15-alpine

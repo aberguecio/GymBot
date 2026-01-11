@@ -12,16 +12,13 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str
 
-    # API
-    API_PREFIX: str = "/api/v1"
-    API_KEY: str | None = None  # Opcional - solo si necesitas proteger la API
-
     # App
     DEBUG: bool = False
 
     model_config = SettingsConfigDict(
         env_file=".env",
-        case_sensitive=True
+        case_sensitive=True,
+        extra="ignore"  # Ignorar variables extra del .env
     )
 
 
