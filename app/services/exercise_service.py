@@ -86,3 +86,18 @@ async def get_recent_exercises(
         .limit(limit)
     )
     return list(result.scalars().all())
+
+
+async def get_exercises_by_date_range(
+    db: AsyncSession,
+    start_date: date,
+    end_date: date
+) -> list[Exercise]:
+    """Get all exercises within a date range (for groups)"""
+    result = await db.execute(
+        select(Exercise)
+        .where(Exercise.day >= start_date)
+        .where(Exercise.day <= end_date)
+        .order_by(Exercise.day.desc())
+    )
+    return list(result.scalars().all())

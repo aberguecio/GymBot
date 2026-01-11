@@ -99,39 +99,78 @@ async def add_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /stats command - Show stats for current month"""
     telegram_id = update.effective_user.id
+    chat_type = update.effective_chat.type
     today = date.today()
     month_start = today.replace(day=1)
 
     async with AsyncSessionLocal() as db:
-        # Get count
-        counts = await exercise_service.count_exercises(
-            db=db,
-            telegram_id=telegram_id,
-            start_date=month_start,
-            end_date=today
-        )
+        # Detectar si es un grupo
+        if chat_type in ["group", "supergroup"]:
+            # En grupos: mostrar stats de todos los usuarios
+            # Obtener todos los ejercicios del grupo en el mes
+            all_exercises = await exercise_service.get_exercises_by_date_range(
+                db=db,
+                start_date=month_start,
+                end_date=today
+            )
 
-        total = counts[0].count if counts else 0
+            # Agrupar por usuario
+            user_stats = {}
+            for exercise in all_exercises:
+                user_id = exercise.user_id
+                if user_id not in user_stats:
+                    user = await user_service.get_user_by_id(db, user_id)
+                    user_stats[user_id] = {
+                        "user": user,
+                        "count": 0
+                    }
+                user_stats[user_id]["count"] += 1
 
-        # Get recent exercises
-        recent_exercises = await exercise_service.get_recent_exercises(
-            db=db,
-            telegram_id=telegram_id,
-            limit=5
-        )
+            # Formatear mensaje para grupo
+            month_name = today.strftime("%B %Y")
+            message = f"📊 Estadísticas del Grupo - {month_name}\n\n"
 
-        # Format message
-        month_name = today.strftime("%B %Y")
-        message = f"📊 Tus Estadísticas - {month_name}\n\n"
-        message += f"Total de entrenamientos: {total} días\n\n"
+            if user_stats:
+                for user_id, stats in sorted(user_stats.items(), key=lambda x: x[1]["count"], reverse=True):
+                    user = stats["user"]
+                    count = stats["count"]
+                    name = user.first_name or user.username or f"User {user_id}"
+                    message += f"• {name}: {count} días\n"
+            else:
+                message += "No hay entrenamientos registrados este mes."
 
-        if recent_exercises:
-            message += "Últimos entrenamientos:\n"
-            message += format_exercise_list(recent_exercises)
+            message += "\n\n¡Sigan así! 💪"
+
         else:
-            message += "No hay entrenamientos registrados este mes."
+            # Chat privado: mostrar stats personales (código existente)
+            counts = await exercise_service.count_exercises(
+                db=db,
+                telegram_id=telegram_id,
+                start_date=month_start,
+                end_date=today
+            )
 
-        message += "\n\n¡Sigue así! 💪"
+            total = counts[0].count if counts else 0
+
+            # Get recent exercises
+            recent_exercises = await exercise_service.get_recent_exercises(
+                db=db,
+                telegram_id=telegram_id,
+                limit=5
+            )
+
+            # Format message
+            month_name = today.strftime("%B %Y")
+            message = f"📊 Tus Estadísticas - {month_name}\n\n"
+            message += f"Total de entrenamientos: {total} días\n\n"
+
+            if recent_exercises:
+                message += "Últimos entrenamientos:\n"
+                message += format_exercise_list(recent_exercises)
+            else:
+                message += "No hay entrenamientos registrados este mes."
+
+            message += "\n\n¡Sigue así! 💪"
 
         await update.message.reply_text(message)
 

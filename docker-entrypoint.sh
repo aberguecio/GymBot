@@ -6,6 +6,12 @@ until pg_isready -h db -U gymbot; do
   sleep 1
 done
 
+# Verificar si existe alguna migración
+if [ ! "$(ls -A alembic/versions)" ]; then
+    echo "No migrations found. Creating initial migration..."
+    alembic revision --autogenerate -m "Initial tables"
+fi
+
 echo "Running database migrations..."
 alembic upgrade head
 
