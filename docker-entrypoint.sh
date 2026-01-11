@@ -7,7 +7,7 @@ until pg_isready -h db -U gymbot; do
 done
 
 # Verificar si existe alguna migración
-if [ ! "$(ls -A alembic/versions)" ]; then
+if [ -z "$(find alembic/versions -name '*.py' -type f)" ]; then
     echo "No migrations found. Creating initial migration..."
     alembic revision --autogenerate -m "Initial tables"
 fi
