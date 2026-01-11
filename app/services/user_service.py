@@ -1,16 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.models.user import User
-from app.schemas.user import UserCreate, UserUpdate
-
-
-async def create_user(db: AsyncSession, user_data: UserCreate) -> User:
-    """Create a new user"""
-    user = User(**user_data.model_dump())
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-    return user
 
 
 async def get_user_by_telegram_id(db: AsyncSession, telegram_id: int) -> User | None:
@@ -64,20 +54,3 @@ async def create_or_update_user(
     return user
 
 
-async def update_user(
-    db: AsyncSession,
-    user_id: int,
-    user_data: UserUpdate
-) -> User | None:
-    """Update user data"""
-    user = await get_user_by_id(db, user_id)
-    if not user:
-        return None
-
-    update_data = user_data.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(user, field, value)
-
-    await db.commit()
-    await db.refresh(user)
-    return user
