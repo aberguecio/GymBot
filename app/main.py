@@ -30,6 +30,7 @@ async def lifespan(app: FastAPI):
     telegram_app.add_handler(CommandHandler("start", handlers.start_command))
     telegram_app.add_handler(CommandHandler("help", handlers.help_command))
     telegram_app.add_handler(CommandHandler("add", handlers.add_command))
+    telegram_app.add_handler(CommandHandler("add_past", handlers.add_past_command))
     telegram_app.add_handler(CommandHandler("stats", handlers.stats_command))
     telegram_app.add_handler(CommandHandler("stats_month", handlers.stats_month_command))
     telegram_app.add_handler(CommandHandler("stats_custom", handlers.stats_custom_command))

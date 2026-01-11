@@ -27,6 +27,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Tu cuenta ha sido creada exitosamente.\n\n"
         "Comandos disponibles:\n"
         "/add <ejercicio> - Registrar entrenamiento de hoy\n"
+        "/add_past <fecha> <ejercicio> - Registrar entrenamiento pasado\n"
         "/stats - Ver estadísticas del mes\n"
         "/stats_month <YYYY-MM> - Ver estadísticas de un mes\n"
         "/stats_custom <inicio> <fin> - Ver estadísticas personalizadas\n"
@@ -38,10 +39,13 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /help command"""
     await update.message.reply_text(
         "📋 *Comandos de GymBot*\n\n"
-        "/start - Iniciar y registrarse\n"
+        "/start - Iniciar y registrarse\n\n"
         "/add <ejercicio> - Registrar entrenamiento de hoy\n"
         "   Ejemplo: /add Bench press 3x10, Cardio 20min\n\n"
-        "/stats - Ver estadísticas del mes actual\n"
+        "/add_past <fecha> <ejercicio> - Registrar entrenamiento pasado\n"
+        "   Ejemplo: /add_past 2026-01-10 Leg day 4x12\n"
+        "   Formato de fecha: YYYY-MM-DD\n\n"
+        "/stats - Ver estadísticas del mes actual\n\n"
         "/stats_month <YYYY-MM> - Ver estadísticas de un mes específico\n"
         "   Ejemplo: /stats_month 2025-12\n\n"
         "/stats_custom <inicio> <fin> - Ver estadísticas de rango personalizado\n"
@@ -88,6 +92,71 @@ async def add_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"✅ Entrenamiento registrado para {today}\n\n"
                 f"Descripción: {description}\n"
                 f"Total de entrenamientos este mes: {total}"
+            )
+        except ValueError as e:
+            await update.message.reply_text(
+                f"❌ Error: {str(e)}\n\n"
+                "Primero usa /start para registrarte."
+            )
+
+
+async def add_past_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle /add_past command - Add exercise for a past date"""
+    if not context.args or len(context.args) < 2:
+        await update.message.reply_text(
+            "❌ Debes proporcionar la fecha y descripción del ejercicio.\n\n"
+            "Formato: /add_past <YYYY-MM-DD> <descripción>\n"
+            "Ejemplo: /add_past 2026-01-10 Leg day 4x12"
+        )
+        return
+
+    telegram_id = update.effective_user.id
+    date_str = context.args[0]
+    description = " ".join(context.args[1:])
+
+    # Parse and validate date
+    exercise_date = parse_date(date_str)
+    if not exercise_date:
+        await update.message.reply_text(
+            "❌ Formato de fecha inválido.\n\n"
+            "Usa el formato YYYY-MM-DD\n"
+            "Ejemplo: 2026-01-10"
+        )
+        return
+
+    # Validate date is not in the future
+    if exercise_date > date.today():
+        await update.message.reply_text(
+            "❌ No puedes registrar entrenamientos en el futuro.\n\n"
+            f"Fecha proporcionada: {exercise_date}\n"
+            f"Fecha actual: {date.today()}"
+        )
+        return
+
+    async with AsyncSessionLocal() as db:
+        try:
+            # Add exercise
+            await exercise_service.add_exercise(
+                db=db,
+                telegram_id=telegram_id,
+                day=exercise_date,
+                description=description
+            )
+
+            # Get count for the month of the exercise
+            month_start = exercise_date.replace(day=1)
+            counts = await exercise_service.count_exercises(
+                db=db,
+                telegram_id=telegram_id,
+                start_date=month_start,
+                end_date=exercise_date
+            )
+            total = counts[0].count if counts else 0
+
+            await update.message.reply_text(
+                f"✅ Entrenamiento registrado para {exercise_date}\n\n"
+                f"Descripción: {description}\n"
+                f"Total de entrenamientos en {exercise_date.strftime('%B %Y')}: {total}"
             )
         except ValueError as e:
             await update.message.reply_text(
